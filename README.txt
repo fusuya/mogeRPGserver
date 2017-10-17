@@ -1,6 +1,11 @@
+・Linux
 実行にはsbclとquicklispが必要です。
 sbcl --load load.lisp
-で起動します。
+で起動します
+。
+・Windows
+releaseのとこに実行ファイルうｐしました。
+
 JSONの生成にjonathanを使用しています
 
 ・終了の仕方
