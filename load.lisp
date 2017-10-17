@@ -1,6 +1,6 @@
 (ql:quickload :jonathan)
 (ql:quickload :cl-ppcre)
-(load "orc-battle.lisp" :external-format :utf-8)
+(load "mogeRPGserver.lisp" :external-format :utf-8)
 (load "maze-test.lisp" :external-format :utf-8)
 #|
 ;;デバッガ起動したくないときに使う
@@ -13,12 +13,12 @@
         (sb-ext:quit :recklessly-p t)))
 |#
 
-(main)
-(sb-ext:exit)
-#|
-(sb-ext:save-lisp-and-die "mogerpg"
+;;(main)
+;;(sb-ext:exit)
+
+(sb-ext:save-lisp-and-die "mogeRPGserver"
 			  :toplevel #'main
 			  :save-runtime-options t
 			  :executable t)
-|#
+
 
