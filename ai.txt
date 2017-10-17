@@ -1,1 +1,1 @@
-sbcl --load sampleAI.lisp
+sbcl --noinform --load sampleAI.lisp
