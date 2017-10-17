@@ -768,6 +768,7 @@
 	(boss nil)
 	(kaidan nil)
 	(ha2 nil)
+	(path nil)
 	(events nil))
     (gamen-clear)
     (format t "地下~d階  " (player-map p))
@@ -777,13 +778,14 @@
       (loop for j from 0 below (donjon-yoko map) do
 	(let ((x (aref (donjon-map map) i j)))
 	  (case x
-	    (30 (push (list i j) blocks)) ;; 壁
-	    (40 (push (list i j) walls)) ;; 壊せない壁
-	    (5  (push (list i j) boss)) ;;ボス
-	    (3  (push (list i j) items)) ;; 宝箱
-	    (2  (push (list i j) kaidan)) ;; 下り階段
-	    (6  (push (list i j) events)) ;; イベント
-	    (7  (push (list i j) ha2))) ;; 中ボス ハツネツエリア
+	    (0  (push (list j i) path))   ;;道
+	    (30 (push (list j i) blocks)) ;; 壁
+	    (40 (push (list j i) walls)) ;; 壊せない壁
+	    (5  (push (list j i) boss)) ;;ボス
+	    (3  (push (list j i) items)) ;; 宝箱
+	    (2  (push (list j i) kaidan)) ;; 下り階段
+	    (6  (push (list j i) events)) ;; イベント
+	    (7  (push (list j i) ha2))) ;; 中ボス ハツネツエリア
 	  (format t "~a" (map-type x))
 	  (if (= j (- (donjon-yoko map) 1))
 	      (case i
@@ -795,7 +797,7 @@
 		(6 (format t " 終わる[r]~%"))
 	      (otherwise (fresh-line)))))))
     (show-msg p)
-    (list :|blocks| blocks :|walls| walls :|items| items :|boss| boss :|kaidan| kaidan
+    (list :|blocks| blocks :|walls| walls :|path| path :|items| items :|boss| boss :|kaidan| kaidan
 	  :|events| events :|ha2| ha2)))
 
 ;;マップ情報とプレイヤー情報を渡して移動先を受け取る
