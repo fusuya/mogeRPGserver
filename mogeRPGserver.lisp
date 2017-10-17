@@ -15,6 +15,7 @@
 (defparameter *start-time* 0)
 (defparameter *ha2ne2* nil)
 (defparameter *copy-buki* (copy-tree *buki-d*))
+(defparameter *proc* nil)
 (defparameter *ai* nil)
 (defparameter *ai-name* nil)
 
@@ -72,14 +73,14 @@
 ;;*ai* ストリーム？
 (defun load-ai ()
   (with-open-file (in "ai.txt" :direction :input)
-    (let* ((hoge (ppcre:split #\space (format nil "~a" (read-line in nil))))
-	   (proc (sb-ext:run-program
-		  (car hoge) (cdr hoge)
-		  :input :stream
-		  :output :stream
-		  :wait nil
-		  :search t)))
-      (setf *ai* (make-two-way-stream (process-output proc) (process-input proc)))
+    (let* ((hoge (ppcre:split #\space (format nil "~a" (read-line in nil)))))
+      (setf *proc* (sb-ext:run-program
+		    (car hoge) (cdr hoge)
+		    :input :stream
+		    :output :stream
+		    :wait nil
+		    :search t))
+      (setf *ai* (make-two-way-stream (process-output *proc*) (process-input *proc*)))
       (setf *ai-name* (read-line *ai*)))))
 
 ;;画面クリア？
@@ -768,7 +769,7 @@
 	(boss nil)
 	(kaidan nil)
 	(ha2 nil)
-	(path nil)
+	;;(path nil)
 	(events nil))
     (gamen-clear)
     (format t "地下~d階  " (player-map p))
@@ -778,7 +779,7 @@
       (loop for j from 0 below (donjon-yoko map) do
 	(let ((x (aref (donjon-map map) i j)))
 	  (case x
-	    (0  (push (list j i) path))   ;;道
+	    ;;(0  (push (list j i) path))   ;;道
 	    (30 (push (list j i) blocks)) ;; 壁
 	    (40 (push (list j i) walls)) ;; 壊せない壁
 	    (5  (push (list j i) boss)) ;;ボス
@@ -797,7 +798,7 @@
 		(6 (format t " 終わる[r]~%"))
 	      (otherwise (fresh-line)))))))
     (show-msg p)
-    (list :|blocks| blocks :|walls| walls :|path| path :|items| items :|boss| boss :|kaidan| kaidan
+    (list :|blocks| blocks :|walls| walls :|items| items :|boss| boss :|kaidan| kaidan
 	  :|events| events :|ha2| ha2)))
 
 ;;マップ情報とプレイヤー情報を渡して移動先を受け取る
@@ -848,10 +849,12 @@
   (load-ai)
   (setf *random-state* (make-random-state t))
   (let* ((p (make-player)) 
-	 (map (make-donjon)))
+	 (map (make-donjon))
+	 (err nil))
     (init-data) ;;データ初期化
     (maze map p) ;;マップ生成
     (main-game-loop map p)))
+      
 
 ;;壁破壊
 (defun kabe-break (map p y x)
