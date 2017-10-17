@@ -1,4 +1,4 @@
-;; sb-exit:quit を使っている警告を消す。
+;; sb-ext:quit を使っている警告を消す。
 (declaim (sb-ext:muffle-conditions cl:warning))
 
 ;; エラーが起こったら終了する。
