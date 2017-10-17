@@ -1,3 +1,12 @@
+;; sb-exit:quit を使っている警告を消す。
+(declaim (sb-ext:muffle-conditions cl:warning))
+
+;; エラーが起こったら終了する。
+(setf sb-ext:*invoke-debugger-hook*
+      (lambda (condition hook)
+        (declare (ignore condition hook))
+        (sb-ext:quit :recklessly-p t)))
+
 (ql:quickload :jonathan :silent t)
 
 (defun map-mode (data)
