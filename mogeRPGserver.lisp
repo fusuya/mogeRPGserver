@@ -828,8 +828,8 @@
 	(progn (format t "~%「もげぞうを倒したが、逃したハツネツエリアが新たな迷宮を作り出した・・・」~%")
 	       (format t "「が、それはまた別のお話。」~%")))
     (format t "クリアタイムは~2,'0d:~2,'0d:~2,'0d でした！~%" h m s)
-    (ranking-dialog ss)
-    (continue-message)))
+    (ranking-dialog ss)))
+    ;;(continue-message)))
 ;;プレイヤーが死ぬか戦闘に入るか*end*=2になるまでループ
 (defun main-game-loop (map p)
   (unless (or (= *end* 2) (player-dead p))
@@ -1131,34 +1131,21 @@
     (let ((ranking (read-ranking)))
         (write-ranking (funcall fun ranking)))))
 
-;; メッセージ message を表示し、ユーザーから 1 あるいは 2 を受け取る。
-;; 1 を受け取れば t を、2を受け取れば nil を返す。それ以外はループ
-(defun yes-no-dialog (message)
-  (format t "~a(yes=1 or no=2)~%" message)
-  (case (read-command-char)
-    (1 t)
-    (2 nil)
-    (otherwise (yes-no-dialog message))))
 
 ;; クリア記録 total-seconds をランキングファイルへ登録時のダイアログ。
 (defun ranking-dialog (total-seconds)
-  (when (yes-no-dialog "ランキングに登録しますか？")
-    (gamen-clear)
-    (endo-win)
-    (fresh-line)
-    (format t "~%名前を教えてください：~%")
-    ;;(format t "名前を入力してください:~%")
-    (let ((name (read-line)))
-      (ranking-transaction
-       (lambda (ranking)
-         (let ((ranking1 (ranking-update name total-seconds ranking)))
-           (if (equal ranking1 ranking)
-               (progn
-                 (format t "ランキングに入りませんでした。~%")
-                 (ranking-show ranking)
-                 ranking)
+  (format t "~%ランキングに登録します：~%")
+  ;;(format t "名前を入力してください:~%")
+  (let ((name *ai-name*))
+    (ranking-transaction
+     (lambda (ranking)
+       (let ((ranking1 (ranking-update name total-seconds ranking)))
+	 (if (equal ranking1 ranking)
+	     (progn
+	       (format t "ランキングに入りませんでした。~%")
+	       (ranking-show ranking)
+	       ranking)
              (progn
                (format t "見事ランクイン！~%")
                (ranking-show ranking1 name)
-               ranking1))))))
-    (init-charms)))
+               ranking1)))))))
