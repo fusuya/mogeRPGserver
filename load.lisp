@@ -13,12 +13,12 @@
         (sb-ext:quit :recklessly-p t)))
 |#
 
-;;(main)
-;;(sb-ext:exit)
-
+(main)
+(sb-ext:exit)
+#|
 (sb-ext:save-lisp-and-die "mogeRPGserver"
 			  :toplevel #'main
 			  :save-runtime-options t
 			  :executable t)
 
-
+|#
