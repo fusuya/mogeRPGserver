@@ -1,4 +1,5 @@
 (load "item.lisp" :external-format :utf-8)
+(ql:quickload "unix-opts")
 
 (defparameter *tate* 11) ;;マップサイズ11
 (defparameter *yoko* 11) ;;11
@@ -18,6 +19,12 @@
 (defparameter *proc* nil)
 (defparameter *ai* nil)
 (defparameter *ai-name* nil)
+(defparameter *ai-command-line* nil)
+
+(defparameter *battle-delay-seconds* 0.3)
+(defparameter *map-delay-seconds* 0.3)
+
+(defparameter *gamen-clear?* t)
 
 ;;(defparameter p1 (make-player))
 (defstruct player
@@ -71,19 +78,24 @@
 	*ha2ne2* nil
 	*copy-buki* (copy-tree *buki-d*)))
 
+(defun get-ai-command-line ()
+  (if *ai-command-line*
+      *ai-command-line*
+    (with-open-file (in "ai.txt" :direction :input)
+                    (format nil "~a" (read-line in nil)))))
+
 ;;ai.txtからai起動するコマンドを読み込む
 ;;*ai* ストリーム？
 (defun load-ai ()
-  (with-open-file (in "ai.txt" :direction :input)
-    (let* ((hoge (ppcre:split #\space (format nil "~a" (read-line in nil)))))
-      (setf *proc* (sb-ext:run-program
-		    (car hoge) (cdr hoge)
-		    :input :stream
-		    :output :stream
-		    :wait nil
-		    :search t))
-      (setf *ai* (make-two-way-stream (process-output *proc*) (process-input *proc*)))
-      (setf *ai-name* (read-line *ai*)))))
+  (let* ((hoge (ppcre:split #\space (get-ai-command-line))))
+    (setf *proc* (sb-ext:run-program
+                  (car hoge) (cdr hoge)
+                  :input :stream
+                  :output :stream
+                  :wait nil
+                  :search t))
+    (setf *ai* (make-two-way-stream (process-output *proc*) (process-input *proc*)))
+    (setf *ai-name* (read-line *ai*))))
 
 ;;画面クリア？
 (defun sh (cmd)
@@ -253,8 +265,7 @@
 		  (if (monster-dead m2)
 		      (monster-hit2 p (random-monster) x)
 		      (monster-hit2 p m2 x))))))))))
-    (sleep 0.3)
-    ))
+    (sleep *battle-delay-seconds*)))
 	   
 ;;n内の１以上の乱数
 (defun randval (n)
@@ -689,7 +700,7 @@
 	((equal str "RIGHT") (update-map map p 0 1))
 	((equal str "LEFT") (update-map map p 0 -1))
 	((equal str "HEAL") (use-heal p)))
-      (sleep 0.3)
+      (sleep *map-delay-seconds*)
       (map-move map p))))
 
 ;;エンディング
@@ -718,14 +729,59 @@
        (main-game-loop map p)))))
 ;;ゲーム開始
 (defun main ()
+  (parse-args)
   (load-ai)
+  #+nil (setf *random-state* (make-random-state t))
   (let* ((p (make-player)) 
 	 (map (make-donjon))
 	 (err nil))
     (init-data) ;;データ初期化
     (maze map p) ;;マップ生成
     (main-game-loop map p)))
-      
+
+(defun set-random-seed (n)
+  (dotimes (i n)
+    (random 2)))
+
+(defun parse-args ()
+  (opts:define-opts
+   (:name :help
+          :description "このヘルプを表示"
+          :short #\h
+          :long "help")
+   (:name :random-seed
+          :description "乱数の種(非負整数)"
+          :short #\r
+          :long "random-seed"
+          :arg-parser #'parse-integer)
+   (:name :delay
+          :description "表示のディレイ(小数可)"
+          :short #\d
+          :long "delay"
+          :arg-parser #'read-from-string)
+   (:name :no-clear
+          :description "画面のクリアをしない"
+          :long "no-clear")
+   (:name :ai
+          :description "AIプログラムを起動するコマンドライン"
+          :long "ai"
+          :arg-parser #'identity))
+  (let ((options (opts:get-opts)))
+    (when (getf options :help)
+      (opts:describe
+       :prefix "もげRPGserver"
+       :usage-of "mogeRPGserver")
+      (sb-ext:exit))
+    (when (getf options :delay)
+      (setf *battle-delay-seconds* (getf options :delay)
+            *map-delay-seconds* (getf options :delay)))
+    (if (getf options :random-seed)
+        (set-random-seed (getf options :random-seed))
+      (setf *random-state* (make-random-state t))) ; 環境から乱数を取得。
+    (when (getf options :no-clear)
+      (setf *gamen-clear?* nil))
+    (when (getf options :ai)
+      (setf *ai-command-line* (getf options :ai)))))
 
 ;;壁破壊
 (defun kabe-break (map p y x)
