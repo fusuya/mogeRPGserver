@@ -1,11 +1,33 @@
 ・Linux
-実行にはsbclとquicklispが必要です。
+実行にはsbclとquicklispもしくはroswellが必要です。
 sbcl --load load.lisp
+or
+ros -l load.lisp
 で起動します。
 ・Windows
 releaseのとこに実行ファイルうｐしました。
+mogeRPGserver.exeで起動します。
 
 JSONの生成にjonathanを使用しています
+
+・mogeRPGserveの起動の仕方
+--help を指定して起動すると以下のヘルプが表示されます。
+
+Usage: mogeRPGserver [-h|--help] [-r|--random-seed ARG] [-d|--delay ARG]
+                     [--no-clear] [--ai ARG]
+
+Available options:
+  -h, --help               このヘルプを表示
+  -r, --random-seed ARG    乱数の種(非負整数)
+  -d, --delay ARG          表示のディレイ(小数可)
+  --no-clear               画面のクリアをしない
+  --ai ARG                 AIプログラムを起動するコマンドライン
+
+-r 0 などとすると数字に対応した乱数の種で起動し、(AIが同じように行動するなら)同じ冒険ができます。--random-seed 0 や --random-seed=0 としてOKです。このオプションを指定しないと毎回違う冒険になります。
+
+-d 0.5 などとすると表示ディレイが 0.5 秒になります。--no-clear でマップ表示時などの画面クリアを省略できます。冒険のログの確認のためですが、clear コマンドを実行しないので動作の高速化にもなります。
+
+--ai 'ruby ai.rb' などと指定すると ai.txt を読み込むかわりに指定されたコマンドラインで AI を起動します。
 
 ・終了の仕方
 
@@ -130,3 +152,4 @@ println "HEAL"; // 回復薬を使う
 "HP" "STR" "AGI"
 のいずれかです。
 増やしたいステータスを出力してください
+
