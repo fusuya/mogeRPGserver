@@ -1,16 +1,15 @@
 ・Linux
-実行にはsbclとquicklispもしくはroswellが必要です。
-sbcl --load load.lisp
-or
-ros -l load.lisp
-で起動します。
+releaseのとこに実行ファイルうｐしました。
+./mogeRPGserverで起動します。
+
 ・Windows
 releaseのとこに実行ファイルうｐしました。
 mogeRPGserver.exeで起動します。
 
 JSONの生成にjonathanを使用しています
 
-・mogeRPGserveの起動の仕方
+・mogeRPGserverのオプション(win・linux)
+
 --help を指定して起動すると以下のヘルプが表示されます。
 
 Usage: mogeRPGserver [-h|--help] [-r|--random-seed ARG] [-d|--delay ARG]
