@@ -102,7 +102,8 @@
   (sb-ext:run-program "/bin/sh" (list "-c" cmd) :input nil :output *standard-output*))
 
 (defun gamen-clear ()
-  (sh "clear"))
+  (when *gamen-clear?*
+    (sh "clear")))
 
 ;;ゲームオーバーメッセージ
 (defun game-over-message (p)
