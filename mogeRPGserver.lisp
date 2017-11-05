@@ -150,8 +150,6 @@
 ;;戦闘終了後アイテム入手
 (defun item-drop? (p)
   (gamen-clear)
-  (show-pick-monsters)
-  (format t "~%~%")
   (dolist (item (player-drop p))
     (let ((buki (assoc item *event-buki* :test #'equal)))
       (cond
@@ -174,35 +172,35 @@
      (init-monsters p)))
   (game-loop p) ;;バトルループ
   (gamen-clear)
-  (show-pick-monsters)
-  (format t "~%~%")
   (cond
     ((player-dead p) ;;プレイヤーが死んだとき
      (game-over-message p)
      (setf *end* 2))
+    ((= *end* 2) ;;エラー終了
+     nil)
     (t ;;(monsters-dead) 敵を倒したとき
      (level-up p) ;;レベルアップ処理
      (if (player-drop p)
 	 (item-drop? p)) ;;アイテム入手処理
      (cond
-       ((= *boss?* 1) (setf *end* 1)) ;;ラスボスならエンディングへ
+       ((= *boss?* 1)
+	(setf *end* 1)
+	(victory-message)) ;;ラスボスならエンディングへ
        ((= *boss?* 2) (setf *ha2ne2* t))) ;;中ボス倒したフラグ
      ;;バトルフラグとボスフラグを初期化
      (setf *battle?* nil
-	   *boss?* 0)
-     (victory-message))))
+	   *boss?* 0))))
 
 ;;バトル時、プレイヤーが死ぬかモンスターが全滅するまでループ
 (defun game-loop (p)
   (unless (or (player-dead p) (monsters-dead))
     (dotimes (k (1+ (truncate (/ (max 0 (player-agi p)) 15))))
-      (unless (monsters-dead)
+      (unless (or (monsters-dead) (= *end* 2))
 	(player-attack2 p)))
-    (cond 
+    (cond
+      ((= *end* 2) ;;エラー集雨量
+       nil)
       ((null (monsters-dead))
-       (gamen-clear)
-       (show-pick-monsters)
-       (format t "------------------------敵のターン--------------------------~%")
        (map 'list
             (lambda (m)
               (or (monster-dead m) (monster-attack m p)))
@@ -232,41 +230,47 @@
 	     (4 (format t "EXP ~3d/~3d~%" (player-exp p) *lv-exp*)))))
 ;;攻撃方法入出力
 (defun player-attack2 (p)
-  (let ((str nil))
-    (gamen-clear)
-    (show-pick-monsters)
-    (status-and-command p)
+  (let ((str-l nil) (str nil))
+    
     (format *ai* "~a~%" (jonathan:to-json (append (list :|battle| 1) (monster-list) (player-list p))))
     (finish-output *ai*)
-    (setf str (read-line *ai*))
+    (setf str-l (read-line *ai*))
+    (setf str (ppcre:split #\space str-l))
     (cond
-      ((string= str "HEAL")
-       (use-heal p))
-      ((string= str "SWING")
-       (format t "「なぎはらい！」~%") 
-       (dotimes (x (1+ (randval (truncate (/ (player-str p) 3)))))
-	 (unless (monsters-dead)
-	   (monster-hit2 p (random-monster) 1))))
-      (t
-       (let* ((str-l (ppcre:split #\space str))
-	      (act (car str-l)))
-	 (cond
-	   ((string= act "STAB")
-	    (format t "「~c に斬りかかった！」~%" (number->a (parse-integer (cadr str-l))))
-	    (let ((m (aref *monsters* (parse-integer (cadr str-l)))))
-	      (monster-hit2 p m (+ 2 (randval (ash (player-str p) -1))))))
-	   ((string= act "DOUBLE")
-	    (format t "「~c と ~c にダブルアタック！」~%" (number->a (parse-integer (second str-l)))
-		    (number->a (parse-integer (third str-l))))
-	    (let ((m (aref *monsters* (parse-integer (second str-l))))
-		  (x (randval (truncate (/ (player-str p) 6)))))
-	      (monster-hit2 p m x) ;;選ばれたモンスターにダメージ与える
-	      (unless (monsters-dead) ;;生き残ってるモンスターがいるなら２回目の攻撃
-		(let ((m2 (aref *monsters* (parse-integer (third str-l)))))
-		  (if (monster-dead m2)
-		      (monster-hit2 p (random-monster) x)
-		      (monster-hit2 p m2 x))))))))))
-    (sleep *battle-delay-seconds*)))
+      ((find (car str) '("HEAL" "SWING" "STAB" "DOUBLE"))
+       (gamen-clear)
+       (show-pick-monsters)
+       (status-and-command p)
+       (cond
+	 ((string= str "HEAL")
+	  (use-heal p))
+	 ((string= str "SWING")
+	  (format t "「なぎはらい！」~%") 
+	  (dotimes (x (1+ (randval (truncate (/ (player-str p) 3)))))
+	    (unless (monsters-dead)
+	      (monster-hit2 p (random-monster) 1))))
+	 (t
+	  (let* ((act (car str)))
+	    (cond
+	      ((string= act "STAB")
+	       (format t "「~c に斬りかかった！」~%" (number->a (parse-integer (cadr str))))
+	       (let ((m (aref *monsters* (parse-integer (cadr str)))))
+		 (monster-hit2 p m (+ 2 (randval (ash (player-str p) -1))))))
+	      ((string= act "DOUBLE")
+	       (format t "「~c と ~c にダブルアタック！」~%" (number->a (parse-integer (second str)))
+		       (number->a (parse-integer (third str))))
+	       (let ((m (aref *monsters* (parse-integer (second str))))
+		     (x (randval (truncate (/ (player-str p) 6)))))
+		 (monster-hit2 p m x) ;;選ばれたモンスターにダメージ与える
+		 (unless (monsters-dead) ;;生き残ってるモンスターがいるなら２回目の攻撃
+		   (let ((m2 (aref *monsters* (parse-integer (third str)))))
+		     (if (monster-dead m2)
+			 (monster-hit2 p (random-monster) x)
+			 (monster-hit2 p m2 x))))))))))
+       (sleep *battle-delay-seconds*))
+      (t (format t "~A~%" str-l) ;;規定文字列以外の表示(エラーとか)
+	 (setf *end* 2))) 
+    ))
 	   
 ;;n内の１以上の乱数
 (defun randval (n)
@@ -647,14 +651,6 @@
 
 ;;マップ表示+マップの情報リスト作成
 (defun show-map (map p)
-  (let ((blocks nil)
-	(walls nil)
-	(items nil)
-	(boss nil)
-	(kaidan nil)
-	(ha2 nil)
-	;;(path nil)
-	(events nil))
     (gamen-clear)
     (format t "地下~d階  " (player-map p))
     (show-player p)
@@ -662,15 +658,6 @@
     (loop for i from 0 below (donjon-tate map) do
       (loop for j from 0 below (donjon-yoko map) do
 	(let ((x (aref (donjon-map map) i j)))
-	  (case x
-	    ;;(0  (push (list j i) path))   ;;道
-	    (30 (push (list j i) blocks)) ;; 壁
-	    (40 (push (list j i) walls)) ;; 壊せない壁
-	    (5  (push (list j i) boss)) ;;ボス
-	    (3  (push (list j i) items)) ;; 宝箱
-	    (2  (push (list j i) kaidan)) ;; 下り階段
-	    (6  (push (list j i) events)) ;; イベント
-	    (7  (push (list j i) ha2))) ;; 中ボス ハツネツエリア
 	  (format t "~a" (map-type x))
 	  (if (= j (- (donjon-yoko map) 1))
 	      (case i
@@ -681,27 +668,53 @@
 		(5 (format t " 薬を使う[q]~%"))
 		(6 (format t " 終わる[r]~%"))
 	      (otherwise (fresh-line)))))))
-    (show-msg p)
+    (show-msg p))
+
+(defun map-data-list (map)
+  (let ((blocks nil)
+	(walls nil)
+	(items nil)
+	(boss nil)
+	(kaidan nil)
+	(ha2 nil)
+	(events nil))
+    (loop for i from 0 below (donjon-tate map) do
+      (loop for j from 0 below (donjon-yoko map) do
+	(let ((x (aref (donjon-map map) i j)))
+	  (case x
+	    (30 (push (list j i) blocks)) ;; 壁
+	    (40 (push (list j i) walls)) ;; 壊せない壁
+	    (5  (push (list j i) boss)) ;;ボス
+	    (3  (push (list j i) items)) ;; 宝箱
+	    (2  (push (list j i) kaidan)) ;; 下り階段
+	    (6  (push (list j i) events)) ;; イベント
+	    (7  (push (list j i) ha2)))))) ;; 中ボス ハツネツエリア
     (list :|blocks| blocks :|walls| walls :|items| items :|boss| boss :|kaidan| kaidan
 	  :|events| events :|ha2| ha2)))
+    
 
 ;;マップ情報とプレイヤー情報を渡して移動先を受け取る
 (defun map-move (map p)
   (unless (or *battle?* (= *end* 2))
     ;;バトル時と差別化するため先頭にmapってのいれとく.1は特に意味なし
-    (let ((json (append (list :|map| 1) (player-list p) (show-map map p)))
+    (let ((json (append (list :|map| 1) (player-list p) (map-data-list map)))
 	  (str nil))
       (format *ai* "~a~%" (jonathan:to-json json)) ;;データ送る
       (finish-output *ai*) ;;なぞ
       (setf str (read-line *ai*)) ;;データもらう
-      (format t "~a~%" str)
-      (cond 
-	((equal str "UP") (update-map map p -1 0))
-	((equal str "DOWN") (update-map map p 1 0))
-	((equal str "RIGHT") (update-map map p 0 1))
-	((equal str "LEFT") (update-map map p 0 -1))
-	((equal str "HEAL") (use-heal p)))
-      (sleep *map-delay-seconds*)
+      
+      (cond
+	((find str '("UP" "DOWN" "RIGHT" "LEFT" "HEAL") :test #'equal)
+	 (show-map map p)
+	 (cond 
+	   ((equal str "UP") (update-map map p -1 0))
+	   ((equal str "DOWN") (update-map map p 1 0))
+	   ((equal str "RIGHT") (update-map map p 0 1))
+	   ((equal str "LEFT") (update-map map p 0 -1))
+	   ((equal str "HEAL") (use-heal p)))
+	 (sleep *map-delay-seconds*))
+	(t nil)) ;;規定の出力以外(エラーとか)はなにもしない
+      (format t "~a~%" str) ;;aiの標準出力を標準出力（エラーも）
       (map-move map p))))
 
 ;;エンディング
@@ -726,6 +739,8 @@
     (cond
       ((= *end* 1) ;;ゲームクリア
        (ending))
+      ((= *end* 2) ;;規定の文字列以外で終了
+       nil)
       ((= *end* 0) ;;ゲームループ
        (main-game-loop map p)))))
 ;;ゲーム開始
