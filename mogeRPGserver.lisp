@@ -710,9 +710,9 @@
 	   ((equal str "RIGHT") (update-map map p 0 1))
 	   ((equal str "LEFT") (update-map map p 0 -1))
 	   ((equal str "HEAL") (use-heal p)))
+	 (format t "~a~%" str) ;;アクション表示
 	 (sleep *map-delay-seconds*))
-	(t nil)) ;;規定の出力以外(エラーとか)はなにもしない
-      (format t "~a~%" str) ;;aiの標準出力を標準出力（エラーも）
+	(t (format t "~a~%" str))) ;;規定の出力以外(エラーとか)を表示
       (map-move map p))))
 
 ;;エンディング
