@@ -230,47 +230,45 @@
 	     (4 (format t "EXP ~3d/~3d~%" (player-exp p) *lv-exp*)))))
 ;;攻撃方法入出力
 (defun player-attack2 (p)
-  (let ((str-l nil) (str nil))
-    
+  (let ((str-l nil) (str nil) (act nil))
     (format *ai* "~a~%" (jonathan:to-json (append (list :|battle| 1) (monster-list) (player-list p))))
     (finish-output *ai*)
-    (setf str-l (read-line *ai*))
-    (setf str (ppcre:split #\space str-l))
+    (setf str-l (read-line *ai*)
+	  str (ppcre:split #\space str-l)
+	  act (car str))
     (cond
-      ((find (car str) '("HEAL" "SWING" "STAB" "DOUBLE"))
+      ((find act '("HEAL" "SWING" "STAB" "DOUBLE") :test #'equal)
        (gamen-clear)
        (show-pick-monsters)
        (status-and-command p)
        (cond
-	 ((string= str "HEAL")
+	 ((string= act "HEAL")
 	  (use-heal p))
-	 ((string= str "SWING")
+	 ((string= act "SWING")
 	  (format t "「なぎはらい！」~%") 
 	  (dotimes (x (1+ (randval (truncate (/ (player-str p) 3)))))
 	    (unless (monsters-dead)
 	      (monster-hit2 p (random-monster) 1))))
 	 (t
-	  (let* ((act (car str)))
-	    (cond
-	      ((string= act "STAB")
-	       (format t "「~c に斬りかかった！」~%" (number->a (parse-integer (cadr str))))
-	       (let ((m (aref *monsters* (parse-integer (cadr str)))))
-		 (monster-hit2 p m (+ 2 (randval (ash (player-str p) -1))))))
-	      ((string= act "DOUBLE")
-	       (format t "「~c と ~c にダブルアタック！」~%" (number->a (parse-integer (second str)))
-		       (number->a (parse-integer (third str))))
-	       (let ((m (aref *monsters* (parse-integer (second str))))
-		     (x (randval (truncate (/ (player-str p) 6)))))
-		 (monster-hit2 p m x) ;;選ばれたモンスターにダメージ与える
-		 (unless (monsters-dead) ;;生き残ってるモンスターがいるなら２回目の攻撃
-		   (let ((m2 (aref *monsters* (parse-integer (third str)))))
-		     (if (monster-dead m2)
-			 (monster-hit2 p (random-monster) x)
-			 (monster-hit2 p m2 x))))))))))
+	  (cond
+	    ((string= act "STAB")
+	     (format t "「~c に斬りかかった！」~%" (number->a (parse-integer (cadr str))))
+	     (let ((m (aref *monsters* (parse-integer (cadr str)))))
+	       (monster-hit2 p m (+ 2 (randval (ash (player-str p) -1))))))
+	    ((string= act "DOUBLE")
+	     (format t "「~c と ~c にダブルアタック！」~%" (number->a (parse-integer (second str)))
+		     (number->a (parse-integer (third str))))
+	     (let ((m (aref *monsters* (parse-integer (second str))))
+		   (x (randval (truncate (/ (player-str p) 6)))))
+	       (monster-hit2 p m x) ;;選ばれたモンスターにダメージ与える
+	       (unless (monsters-dead) ;;生き残ってるモンスターがいるなら２回目の攻撃
+		 (let ((m2 (aref *monsters* (parse-integer (third str)))))
+		   (if (monster-dead m2)
+		       (monster-hit2 p (random-monster) x)
+		       (monster-hit2 p m2 x)))))))))
        (sleep *battle-delay-seconds*))
       (t (format t "~A~%" str-l) ;;規定文字列以外の表示(エラーとか)
-	 (setf *end* 2))) 
-    ))
+	 (setf *end* 2)))))
 	   
 ;;n内の１以上の乱数
 (defun randval (n)
