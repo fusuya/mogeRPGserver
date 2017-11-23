@@ -4,6 +4,9 @@ http://mogerpg.pcgw.pgw.jp/
 でプレイできるゲームを、標準入出力のやり取りだけで
 攻略するAIを作るゲームです。
 
+・ダウンロード
+https://github.com/fusuya/mogeRPGserver/releases
+
 ・mogeRPGserverのオプション(win・linux)
 
 --help を指定して起動すると以下のヘルプが表示されます。
