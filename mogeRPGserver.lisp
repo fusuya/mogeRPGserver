@@ -114,9 +114,13 @@
     (setf *ai* (make-two-way-stream (process-output *proc*) (process-input *proc*)))
     (setf *ai-name* (read-line *ai*))
     (setf atama (char *ai-name* 0))
-    (if (= 2 (moge-char-width atama))
-	(setf *ai-atama* (format nil "~c" atama))
-	(setf *ai-atama* "主"))))
+    (cond
+      ((= 2 (moge-char-width atama))
+       (setf *ai-atama* (format nil "~c" atama)))
+      ((= 1 (moge-char-width atama))
+       (setf *ai-atama* (format nil "~c" (code-char (+ 65248 (char-code atama))))))
+      (t
+	(setf *ai-atama* "主")))))
 
 ;;画面クリア？
 (defun sh (cmd)
@@ -760,8 +764,7 @@
   (load-ai)
   #+nil (setf *random-state* (make-random-state t))
   (let* ((p (make-player)) 
-	 (map (make-donjon))
-	 (err nil))
+	 (map (make-donjon)))
     (init-data) ;;データ初期化
     (maze map p) ;;マップ生成
     (main-game-loop map p)))
@@ -772,36 +775,42 @@
 
 (defun parse-args ()
   (opts:define-opts
-   (:name :help
-          :description "このヘルプを表示"
-          :short #\h
-          :long "help")
-   (:name :random-seed
-          :description "乱数の種(非負整数)"
-          :short #\r
-          :long "random-seed"
-          :arg-parser #'parse-integer)
-   (:name :delay
-          :description "表示のディレイ(小数可)"
-          :short #\d
-          :long "delay"
-          :arg-parser #'read-from-string)
-   (:name :no-clear
-          :description "画面のクリアをしない"
-          :long "no-clear")
-   (:name :ai
-          :description "AIプログラムを起動するコマンドライン"
-          :long "ai"
-          :arg-parser #'identity))
+      (:name :help
+       :description "このヘルプを表示"
+       :short #\h
+       :long "help")
+      (:name :random-seed
+       :description "乱数の種(非負整数)"
+       :short #\r
+       :long "random-seed"
+       :arg-parser #'parse-integer)
+    (:name :map-delay
+     :description "マップモード時の表示のディレイ(小数可)"
+     :short #\d
+     :long "map-delay"
+     :arg-parser #'read-from-string)
+    (:name :battle-delay
+     :description "バトル時の表示のディレイ(小数可)"
+     :short #\b
+     :long "battle-delay"
+     :arg-parser #'read-from-string)
+    (:name :no-clear
+     :description "画面のクリアをしない"
+     :long "no-clear")
+    (:name :ai
+     :description "AIプログラムを起動するコマンドライン"
+     :long "ai"
+     :arg-parser #'identity))
   (let ((options (opts:get-opts)))
     (when (getf options :help)
       (opts:describe
        :prefix "もげRPGserver"
        :usage-of "mogeRPGserver")
       (sb-ext:exit))
-    (when (getf options :delay)
-      (setf *battle-delay-seconds* (getf options :delay)
-            *map-delay-seconds* (getf options :delay)))
+    (when (getf options :map-delay)
+      (setf *map-delay-seconds* (getf options :map-delay)))
+    (when (getf options :battle-delay)
+      (setf *battle-delay-seconds* (getf options :battle-delay)))
     (if (getf options :random-seed)
         (set-random-seed (getf options :random-seed))
       (setf *random-state* (make-random-state t))) ; 環境から乱数を取得。
