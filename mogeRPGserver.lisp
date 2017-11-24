@@ -19,6 +19,7 @@
 (defparameter *proc* nil)
 (defparameter *ai* nil)
 (defparameter *ai-name* nil)
+(defparameter *ai-atama* nil)
 (defparameter *ai-command-line* nil)
 
 (defparameter *battle-delay-seconds* 0.3)
@@ -82,12 +83,28 @@
   (if *ai-command-line*
       *ai-command-line*
     (with-open-file (in "ai.txt" :direction :input)
-                    (format nil "~a" (read-line in nil)))))
+      (format nil "~a" (read-line in nil)))))
+
+;;文字幅取得
+(defun moge-char-width (char)
+    (if (<= #x20 (char-code char) #x7e)
+        1
+	2))
+;;string全体の文字幅
+(defun string-width (string)
+  (apply #'+ (map 'list #'moge-char-width string)))
+;;最低n幅もったstring作成
+(defun minimum-column (n string)
+  (let ((pad (- n (string-width string))))
+    (if (> pad 0)
+	(concatenate 'string string (make-string pad :initial-element #\ ))
+        string)))
 
 ;;ai.txtからai起動するコマンドを読み込む
 ;;*ai* ストリーム？
 (defun load-ai ()
-  (let* ((hoge (ppcre:split #\space (get-ai-command-line))))
+  (let* ((hoge (ppcre:split #\space (get-ai-command-line)))
+	 (atama nil))
     (setf *proc* (sb-ext:run-program
                   (car hoge) (cdr hoge)
                   :input :stream
@@ -95,7 +112,11 @@
                   :wait nil
                   :search t))
     (setf *ai* (make-two-way-stream (process-output *proc*) (process-input *proc*)))
-    (setf *ai-name* (read-line *ai*))))
+    (setf *ai-name* (read-line *ai*))
+    (setf atama (char *ai-name* 0))
+    (if (= 2 (moge-char-width atama))
+	(setf *ai-atama* (format nil "~c" atama))
+	(setf *ai-atama* "主"))))
 
 ;;画面クリア？
 (defun sh (cmd)
@@ -171,7 +192,7 @@
     ((= *boss?* 0) ;;雑魚
      (init-monsters p)))
   (game-loop p) ;;バトルループ
-  (gamen-clear)
+  
   (cond
     ((player-dead p) ;;プレイヤーが死んだとき
      (game-over-message p)
@@ -179,6 +200,7 @@
     ((= *end* 2) ;;エラー終了
      nil)
     (t ;;(monsters-dead) 敵を倒したとき
+     (gamen-clear)
      (level-up p) ;;レベルアップ処理
      (if (player-drop p)
 	 (item-drop? p)) ;;アイテム入手処理
@@ -220,14 +242,15 @@
 (defun status-and-command (p)
   (format t "------------------------------------------------------------~%")
   (format t ":ステータス~%")
-  (loop for i from 0 to 4
+  (loop for i from 0 to 5
 	do
 	   (case i
 	     (0 (format t "L v  ~2d~%" (player-level p)))
 	     (1 (format t "H P  ~2d/~2d~%" (player-hp p) (player-maxhp p)))
 	     (2 (format t "ATK  ~2d/~2d~%" (player-str p) (player-maxstr p)))
 	     (3 (format t "AGI  ~2d/~2d~%" (player-agi p) (player-maxagi p)))
-	     (4 (format t "EXP ~3d/~3d~%" (player-exp p) *lv-exp*)))))
+	     (4 (format t "HEAL ~2d~%"     (player-heal p)))
+	     (5 (format t "EXP ~3d/~3d~%" (player-exp p) *lv-exp*)))))
 ;;攻撃方法入出力
 (defun player-attack2 (p)
   (let ((str-l nil) (str nil) (act nil))
@@ -616,20 +639,7 @@
       (format t "~a~%" (player-msg p)))
   (setf (player-msg p) nil))
 
-;;文字幅取得
-(defun moge-char-width (char)
-    (if (<= #x20 (char-code char) #x7e)
-        1
-	2))
-;;string全体の文字幅
-(defun string-width (string)
-  (apply #'+ (map 'list #'moge-char-width string)))
-;;最低n幅もったstring作成
-(defun minimum-column (n string)
-  (let ((pad (- n (string-width string))))
-    (if (> pad 0)
-	(concatenate 'string string (make-string pad :initial-element #\ ))
-        string)))
+
 
 
 
@@ -638,7 +648,7 @@
     (30 "ロ") ;; 壁
     (40 "ロ") ;; 壊せない壁
     (0  "　")
-    (1  "主") ;; プレイヤーの位置
+    (1  *ai-atama*) ;; プレイヤーの位置
     (4  "薬") ;; 薬
     (5  "ボ") ;;ボス
     (3  "宝") ;; 宝箱
@@ -668,7 +678,6 @@
 		(3 (format t " 回復薬    ~d個~%" (player-heal p)))
 		(4 (format t " ハンマー  ~d個~%" (player-hammer p)))
 		(5 (format t " Exp       ~d/~d~%" (player-exp p) *lv-exp*))
-		(6 (format t " 薬を使う[q]~%"))
 		(otherwise (fresh-line)))))))
     (show-msg p))
 

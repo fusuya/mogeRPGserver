@@ -1,1 +1,1 @@
-sbcl --noinform --load sampleAI.lisp
+※ここにAIの起動方法を書く
