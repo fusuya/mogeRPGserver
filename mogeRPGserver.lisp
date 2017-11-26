@@ -23,7 +23,9 @@
 (defparameter *ai-command-line* nil)
 
 (defparameter *battle-delay-seconds* 0.3)
+(defparameter *bds* 0.3)
 (defparameter *map-delay-seconds* 0.3)
+(defparameter *boss-delay-seconds* 0.3)
 
 (defparameter *gamen-clear?* t)
 
@@ -212,7 +214,9 @@
        ((= *boss?* 1)
 	(setf *end* 1)
 	(victory-message)) ;;ラスボスならエンディングへ
-       ((= *boss?* 2) (setf *ha2ne2* t))) ;;中ボス倒したフラグ
+       ((= *boss?* 2)
+	(setf *ha2ne2* t) ;;中ボス倒したフラグ
+	(setf *battle-delay-seconds* *bds*))) ;;バトルディレイを元に戻す
      ;;バトルフラグとボスフラグを初期化
      (setf *battle?* nil
 	   *boss?* 0))))
@@ -385,6 +389,7 @@
 ;;配列の０番目にボス、あとはランダムなモンスター(m=0,もげぞう m=1,ハツネツ)
 (defun boss-monsters (p m)
   (let ((hoge 0))
+    (setf *battle-delay-seconds* *boss-delay-seconds*)
     (setf *monsters*
 	  (map 'vector
 	       (lambda (x)
@@ -785,14 +790,19 @@
        :long "random-seed"
        :arg-parser #'parse-integer)
     (:name :map-delay
-     :description "マップモード時の表示のディレイ(小数可)"
+     :description "マップモード時の表示のディレイ(小数可) デフォルト0"
      :short #\d
      :long "map-delay"
      :arg-parser #'read-from-string)
     (:name :battle-delay
-     :description "バトル時の表示のディレイ(小数可)"
+     :description "バトル時の表示のディレイ(小数可) デフォルト0"
      :short #\b
      :long "battle-delay"
+     :arg-parser #'read-from-string)
+    (:name :moge-delay
+     :description "もげぞう戦とハツネツ戦の表示のディレイ(小数可) デフォルト0"
+     :short #\m
+     :long "moge-delay"
      :arg-parser #'read-from-string)
     (:name :no-clear
      :description "画面のクリアをしない"
@@ -810,10 +820,14 @@
     (when (getf options :map-delay)
       (setf *map-delay-seconds* (getf options :map-delay)))
     (when (getf options :battle-delay)
-      (setf *battle-delay-seconds* (getf options :battle-delay)))
+      (setf *battle-delay-seconds* (getf options :battle-delay)
+	    *bds* (getf options :battle-delay)))
+    (if (getf options :moge-delay)
+	(setf *boss-delay-seconds* (getf options :moge-delay))
+	(setf *boss-delay-seconds* *battle-delay-seconds*))
     (if (getf options :random-seed)
         (set-random-seed (getf options :random-seed))
-      (setf *random-state* (make-random-state t))) ; 環境から乱数を取得。
+	(setf *random-state* (make-random-state t))) ; 環境から乱数を取得。
     (when (getf options :no-clear)
       (setf *gamen-clear?* nil))
     (when (getf options :ai)
