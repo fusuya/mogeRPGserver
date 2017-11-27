@@ -795,7 +795,8 @@
                                (format t "~A~%" c)
                                (sb-ext:exit))
    (end-of-file (c) ;;AIからデータを受け取ることができない。
-                (format t "~A~%" c))))
+                (format t "~A~%" c)
+                (sb-ext:exit))))
 
 (defun set-random-seed (n)
   (dotimes (i n)
