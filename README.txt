@@ -17,16 +17,13 @@ Usage: mogeRPGserver [-h|--help] [-r|--random-seed ARG] [-d|--delay ARG]
 Available options:
   -h, --help               このヘルプを表示
   -r, --random-seed ARG    乱数の種(非負整数)
-  -d, --map-delay ARG      マップモード時のディレイ(小数可)
-  -b, --battle-delay ARG   バトル時のディレイ(小数可)
+  -d, --delay ARG          表示のディレイ(小数可)
   --no-clear               画面のクリアをしない
   --ai ARG                 AIプログラムを起動するコマンドライン
 
 -r 0 などとすると数字に対応した乱数の種で起動し、(AIが同じように行動するなら)同じ冒険ができます。--random-seed 0 や --random-seed=0 としてOKです。このオプションを指定しないと毎回違う冒険になります。
 
 -d 0.5 などとすると表示ディレイが 0.5 秒になります。--no-clear でマップ表示時などの画面クリアを省略できます。冒険のログの確認のためですが、clear コマンドを実行しないので動作の高速化にもなります。
-
--b 0.6 -d 0.2 などとするとバトル時のディレイが0.6秒になり、マップ移動時のディレイが0.2秒になります。
 
 --ai 'ruby ai.rb' などと指定すると ai.txt を読み込むかわりに指定されたコマンドラインで AI を起動します。
 
@@ -107,6 +104,20 @@ number モンスター番号 (敵を指定するときに使う)
 level  モンスターのレベル
 hp     モンスターのHP
 
+※2017-11-28追加※
+・バトル時の敵の行動ターン時
+{"damage-info":1,"monsters":[{"name":"ヒドラ","number":5,"level":2,"hp":2,"damage":["hp",1]},{"name":"メタルヨテイチ","number":4,"level":10,"hp":3,"damage":["no"]},{"name":"ヒドラ","number":3,"level":1,"hp":1,"damage":["hp",1]},{"name":"ヒドラ","number":2,"level":5,"hp":5,"damage":["hp",2]},{"name":"ヒドラ","number":1,"level":4,"hp":4,"damage":["hp",2]},{"name":"ブリガンド","number":0,"level":2,"hp":11,"damage":["hp",2]}],"player":{"hp":22,"maxhp":30,"str":30,"maxstr":30,"agi":30,"maxagi":30,"level":1,"exp":0,"heal":2,"hammer":5,"map-level":1,"buki":["なし",0,0,0],"pos":{"x":0,"y":0}}}
+
+上のバトル時のデータをほぼ同じですがmonstersの中にdamageという項目が増えてます。
+"damage":["hp",1]  プレイヤーのHPに1ダメージ与えた
+"damage":["agi",1] プレイヤーのAGIに1ダメージ与えた
+"damage":["str",1] プレイヤーのSTRに1ダメージ与えた
+"damage":["no"]    なにもしなかった
+"damage":["heal",5]  敵がHP5回復した。
+"damage":["all",1]   プレイヤーのすべてのステータスに1ダメージ与えた
+
+※このデータが送られてきた場合は、AIはなにも出力しなくていいです※
+
 ・装備モード時に送られるJSONデータ
 {"equip":1,"now":{"name":"なし","str":0,"hp":0,"agi":0},"discover":{"name":"もげぞーの剣","str":1,"hp":0,"agi":0}}
 
@@ -142,6 +153,10 @@ println "HEAL"; // 回復薬を使う
 (nはモンスター番号)
 (STAB,DOUBLEには半角スペース大事)
 
+2.5,
+敵の攻撃時にjsonデータ(damage-info)が送られてきた場合は
+AIはなにも出力しなくていいです。
+
 3,
 装備モードのときのAIが出力するアクションは
 "YES" 装備する
@@ -152,7 +167,45 @@ println "HEAL"; // 回復薬を使う
 レベルアップもーどのときにAIが出力するアクションは
 "HP"   体力、0になったらゲームオーバー
 "STR"  攻撃力、敵に与えるダメージに影響
-"AGI"  素早さ、1ターンに攻撃できる回数に影響(60~74で5回行動、45~59で4回行動、30~44で3回行動、15~29で2回行動、14以下で1回行動)
+"AGI"  素早さ、1ターンに攻撃できる回数に影響(30で3回攻撃、14以下で1回攻撃)
 のいずれかです。
 増やしたいステータスを出力してください
 
+
+
+・エラーメッセージ
+
+1 AIプログラムを起動できない場合
+2 AIが名前として空行を送って来た場合
+3 AIの予期せぬ終了などでパイプへの書き込み、読み込みができない場合
+4 サーバーのコマンドライン指定がおかしい場合
+
+$ ./mogeRPGserver --ai 'hoge'
+Couldn't execute "hoge": そのようなファイルやディレクトリはありません
+
+$ ./mogeRPGserver --ai 'echo'
+AIの名前が空です。
+AIから名前を受け取ることができませんでした。
+
+$ ./mogeRPGserver --ai 'echo -n'
+end of file on #<TWO-WAY-STREAM
+                 :INPUT-STREAM #<SB-SYS:FD-STREAM for "descriptor 6" {1002DFAB93}>
+                 :OUTPUT-STREAM #<SB-SYS:FD-STREAM for "descriptor 5" {1002DFA763}>>
+AIから名前を受け取ることができませんでした。
+
+$ ./mogeRPGserver --ai 'echo AI'
+ストリームエラーが発生しました。
+Couldn't write to #<SB-SYS:FD-STREAM for "descriptor 5" {1002DFAAA3}>:
+  Broken pipe
+
+$ ./mogeRPGserver -x
+不明なオプションです。-x
+
+$ ./mogeRPGserver hoge
+解釈できないコマンドライン引数があります。("hoge")
+
+$ ./mogeRPGserver -d
+オプション -d に引数がありません。
+
+$ ./mogeRPGserver -d hoge
+オプション -d への引数 hoge が解釈できません。

@@ -240,10 +240,9 @@
       ((= *end* 2) ;;エラー集雨量
        nil)
       ((null (monsters-dead))
-       (map 'list
-            (lambda (m)
-              (or (monster-dead m) (monster-attack m p)))
-            *monsters*)
+       (format *ai* "~a~%" (jonathan:to-json (append (list :|damage-info| 1) (monster-attack-list p)
+						     (player-list p))))
+       (finish-output *ai*)
        (game-loop p)))))
 
 ;;プレイヤーの生死判定
@@ -379,6 +378,37 @@
 			  :|hp| (monster-health m)) lst))))
     (list :|monsters| lst)))
 
+;;モンスター配列をリスト化(モンスターの攻撃付き)
+(defun monster-attack-list (p)
+  (let ((lst nil))
+    (loop for m across *monsters*
+	  for i from 0 do
+	    (if (not (monster-dead m))
+		(case (type-of m)
+		  (orc (push (list :|name| "オーク" :|number| i :|level| (orc-club-level m)
+						    :|hp| (monster-health m)
+						    :|damage| (monster-attack m p)) lst))
+		  (hydra (push (list :|name| "ヒドラ" :|number| i :|level| (monster-health m)
+						      :|hp| (monster-health m)
+						      :|damage| (monster-attack m p)) lst))
+		  (slime-mold (push (list :|name| "スライム" :|number| i
+					  :|level| (slime-mold-sliminess m)
+							     :|hp| (monster-health m)
+							     :|damage| (monster-attack m p)) lst))
+		  (brigand (push (list :|name| "ブリガンド" :|number| i :|level| (brigand-atk m)
+							    :|hp| (monster-health m)
+							    :|damage| (monster-attack m p)) lst))
+		  (yote1 (push (list :|name| "メタルヨテイチ" :|number| i :|level| (yote1-atk m)
+							      :|hp| (monster-health m)
+							      :|damage| (monster-attack m p)) lst))
+		  (ha2ne2 (push (list :|name| "ハツネツエリア" :|number| i :|level| 50
+							       :|hp| (monster-health m)
+							       :|damage| (monster-attack m p)) lst))
+		  (boss (push (list :|name| "もげぞう" :|number| i :|level| 100
+						       :|hp| (monster-health m)
+						       :|damage| (monster-attack m p)) lst)))))
+    (list :|monsters| lst)))
+
 ;;ランダムなモンスターグループを作る
 (defun init-monsters (p)
   (setf *monsters*
@@ -475,20 +505,25 @@
     (case (random 3)
       (0
        (format t "「ハツネツの攻撃。~dのダメージをくらった。」~%" x)
-       (decf (player-hp p) x))
+       (decf (player-hp p) x)
+       (list "hp" x))
       (1
        (let ((dame-str (- (player-str p) x)))
 	 (if (= (player-str p) 0)
 	     (progn (format t "「ネコPパンチ。HPが~d下がった。」~%" x)
-		    (decf (player-hp p) x))
+		    (decf (player-hp p) x)
+		    (list "hp" x))
 	     (if (>= dame-str 0)
 		 (progn (format t "「ネコPパンチ。力が~d下がった。」~%" x)
-			(decf (player-str p) x))
-		 (progn (format t "「ネコPパンチ。力が~d下がった。」~%" (player-str p))
-			(setf (player-str p) 0))))))
+			(decf (player-str p) x)
+			(list "str" x))
+		 (progn (format t "「ネコPパンチ。力が~d下がった。」~%" x)
+			(setf (player-str p) 0) ;;マイナスになったら０にする
+			(list "str" x))))))
       (2
        (format t "「ハツネツが料理してご飯を食べている。ハツネツのHPが~d回復した！」~%" x)
-       (incf (monster-health m) x)))))
+       (incf (monster-health m) x)
+       (list "heal" x)))))
 
 ;;--------ボス------------------------------------------------------------------------
 (defstruct (boss (:include monster)) (boss-atk 10))
@@ -499,17 +534,21 @@
     (case (random 5)
       ((0 3)
        (format t "「もげぞうの攻撃。~dのダメージをくらった。」~%" x)
-       (decf (player-hp p) x))
+       (decf (player-hp p) x)
+       (list "hp" x))
       ((1 4)
        (let ((dame-agi (- (player-agi p) x)))
 	 (if (= (player-agi p) 0)
 	     (progn (format t "「もげぞうの攻撃。~dのダメージをくらった。」~%" x)
-		    (decf (player-hp p) x))
+		    (decf (player-hp p) x)
+		    (list "hp" x))
 	     (if (>= dame-agi 0)
 		 (progn (format t "「もげぞうの不思議な踊り。素早さが~d下がった。」~%" x)
-			(decf (player-agi p) x))
-		 (progn (format t "「もげぞうの不思議な踊り。素早さが~d下がった。」~%" (player-agi p))
-			(setf (player-agi p) 0))))))
+			(decf (player-agi p) x)
+			(list "agi" x))
+		 (progn (format t "「もげぞうの不思議な踊り。素早さが~d下がった。」~%" x)
+			(setf (player-agi p) 0)
+			(list "agi" x))))))
       (2
        (let ((dame-agi (- (player-agi p) x))
 	     (dame-str (- (player-str p) x)))
@@ -520,8 +559,8 @@
 	     (setf (player-agi p) 0))
 	 (if (>= dame-str 0)
 	     (decf (player-str p) x)
-	     (setf (player-str p) 0)))))))
-
+	     (setf (player-str p) 0))
+	 (list "all" x))))))
 ;;-------------------メタルヨテイチ--------------------------------------------------
 (defstruct (yote1 (:include monster))
   (atk    (randval (+ 10 *monster-level*))))
@@ -533,9 +572,12 @@
 (defmethod monster-attack ((m yote1) (p player))
   (let ((atk (randval (yote1-atk m))))
     (case (random 2)
-      (0 (format t "「メタルヨテイチは何もしていない。」~%"))
+      (0
+       (format t "「メタルヨテイチは何もしていない。」~%")
+       (list "no"))
       (1 (format t "「メタルヨテイチが突然殴り掛かってきた。~dのダメージを受けた。」~%" atk)
-       (decf (player-hp p) atk)))))
+       (decf (player-hp p) atk)
+       (list "hp" atk)))))
 
 (defmethod monster-hit2 ((p player) (m yote1) x)
   (decf (monster-health m))
@@ -563,7 +605,8 @@
   (let ((x (randval (orc-club-level m))))
     (format t (monster-show m))
     (format t "が棍棒で殴ってきて ~d のダメージをくらった。~%" x)
-    (decf (player-hp p) x)))
+    (decf (player-hp p) x)
+    (list "hp" x)))
 
 
 
@@ -591,7 +634,8 @@
     (format t (monster-show m))
     (format t "の首が一本生えてきた！~%")
     (incf (monster-health m))
-    (decf (player-hp p) x)))
+    (decf (player-hp p) x)
+    (list "hp" x)))
 
 
 ;;-------------------スライム------------------------------
@@ -614,14 +658,17 @@
 	 (if (>= dame-agi 0)
 	     (progn (format t (monster-show m))
 		    (format t "は足に絡みついてきてあなたの素早さが ~d 下がった！~%" x)
-		    (decf (player-agi p) x))
+		    (decf (player-agi p) x)
+		    (list "agi" x))
 	     (progn (format t (monster-show m))
 		    (format t "は足に絡みついてきてあなたの素早さが ~d 下がった！~%"
-				(player-agi p))
-		    (setf (player-agi p) 0)))))
+				x)
+		    (setf (player-agi p) 0)
+		    (list "agi" x)))))
       (t (format t (monster-show m))
 	 (format t "が何か液体を吐きかけてきて ~d ダメージくらった！~%" x)
-	 (decf (player-hp p) x)))))
+	 (decf (player-hp p) x)
+	 (list "hp" x)))))
 
 ;;-------------------ブリガンド------------------------------
 (defstruct (brigand (:include monster)) (atk (+ 2 (random *monster-level*))))
@@ -641,13 +688,20 @@
     (format t (monster-show m))
     (cond ((= x (player-hp p))
 	   (format t "のスリングショットの攻撃で ~d ダメージくらった！~%" damage)
-	   (decf (player-hp p) damage))
+	   (decf (player-hp p) damage)
+	   (list "hp" damage))
 	  ((= x (player-agi p))
 	   (format t "は鞭であなたの足を攻撃してきた！素早さが ~d 減った！~%" damage)
-	   (decf (player-agi p) damage))
+	   (decf (player-agi p) damage)
+	   (if (> 0 (player-agi p))
+	       (setf (player-agi p) 0))
+	   (list "agi" damage))
 	  ((= x (player-str p))
 	   (format t "は鞭であなたの腕を攻撃してきた！力が ~d 減った！~%" damage)
-	   (decf (player-str p) damage)))))
+	   (decf (player-str p) damage)
+	   (if (> 0 (player-str p))
+	       (setf (player-str p) 0))
+	   (list "str" damage)))))
 
 ;;-----------------------マップ------------------------------------------------------------
 ;;---------------------------------------------------------------------------------------
