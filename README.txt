@@ -17,7 +17,9 @@ Usage: mogeRPGserver [-h|--help] [-r|--random-seed ARG] [-d|--delay ARG]
 Available options:
   -h, --help               このヘルプを表示
   -r, --random-seed ARG    乱数の種(非負整数)
-  -d, --delay ARG          表示のディレイ(小数可)
+  -d, --map-delay ARG      マップ移動時の表示のディレイ(小数可)
+  -b, --battle-delay ARG   バトル時の表示ディレイ(小数可)
+  -m, --mogezou-delay ARG  ボスと中ボス戦の表示ディレイ(小数可)
   --no-clear               画面のクリアをしない
   --ai ARG                 AIプログラムを起動するコマンドライン
 
