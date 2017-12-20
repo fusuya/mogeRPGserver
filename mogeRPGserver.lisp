@@ -948,6 +948,12 @@
   (incf (player-maxstr p) (- (second item) (second (player-buki p))))
   (incf (player-agi p)    (- (fourth item) (fourth (player-buki p))))
   (incf (player-maxagi p) (- (fourth item) (fourth (player-buki p))))
+  (if (>= 0 (player-hp p))
+      (setf (player-hp p) 1))
+  (if (> 0 (player-str p))
+      (setf (player-str p) 0))
+  (if (> 0 (player-agi p))
+      (setf (player-agi p) 0))
   (setf (player-buki p) item))
 
 ;;装備してる武器と見つけた武器のリスト
