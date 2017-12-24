@@ -22,12 +22,20 @@
 (defparameter *ai-atama* nil)
 (defparameter *ai-command-line* nil)
 
-(defparameter *battle-delay-seconds* 0.3)
-(defparameter *bds* 0.3)
-(defparameter *map-delay-seconds* 0.3)
-(defparameter *boss-delay-seconds* 0.3)
+(defparameter *battle-delay-seconds* 0)
+(defparameter *bds* 0)
+(defparameter *map-delay-seconds* 0)
+(defparameter *boss-delay-seconds* 0)
 
 (defparameter *gamen-clear?* t)
+(defparameter *hp* 30)
+(defparameter *str* 30)
+(defparameter *agi* 30)
+(defparameter *level* 1)
+(defparameter *map* 1)
+(defparameter *heal* 2)
+(defparameter *hammer* 5)
+(defparameter *buki* '("なし" 0 0 0))
 
 ;;(defparameter p1 (make-player))
 (defstruct player
@@ -839,8 +847,14 @@
                 (sb-ext:exit)))
   #+nil (setf *random-state* (make-random-state t))
   (handler-case
-   (let* ((p (make-player)) 
+   (let* ((p nil) 
           (map (make-donjon)))
+     (if (or (/= *hp* 30) (/= *str* 30) (/= *agi* 30) (/= *heal* 2) (/= *hammer* 5)
+	     (/= *map* 1) (not (equal "なし" (car *buki*))) (/= *level* 1))
+	 (setf p (make-player :hp *hp* :maxhp *hp* :str *str* :maxstr *str*
+			      :agi *agi* :maxagi *agi* :map *map* :heal *heal*
+			      :hammer *hammer* :buki *buki* :level *level*))
+	 (setf p (make-player)))
      (init-data) ;;データ初期化
      (maze map p) ;;マップ生成
      (main-game-loop map p))
@@ -887,6 +901,46 @@
      :short #\m
      :long "moge-delay"
      :arg-parser #'parse-non-negative-number)
+    (:name :all-delay
+     :description "全てのディレイをこの値にする"
+     :short #\a
+     :long "all-delay"
+     :arg-parser  #'parse-non-negative-number)
+    (:name :hp
+     :description "プレイヤーのHP"
+     :long "hp"
+     :arg-parser #'parse-integer)
+    (:name :str
+     :description "プレイヤーのstr"
+     :long "str"
+     :arg-parser #'parse-integer)
+    (:name :agi
+     :description "プレイヤーのagi"
+     :long "agi"
+     :arg-parser #'parse-integer)
+    (:name :heal
+     :description "プレイヤーの持ってる回復薬の数"
+     :long "heal"
+     :arg-parser #'parse-integer)
+    (:name :hammer
+     :description "プレイヤーの持ってるハンマーの数"
+     :long "hammer"
+     :arg-parser #'parse-integer)
+    (:name :level
+     :description "プレイヤーのレベル"
+     :long "level"
+     :short #\L
+     :arg-parser #'parse-integer)
+    (:name :buki
+     :description "プレイヤーの装備武器"
+     :long "buki"
+     :short #\W
+     :arg-parser #'identity)
+    (:name :floor
+     :description "プレイヤーのいる階層"
+     :short #\F
+     :long "floor"
+     :arg-parser #'parse-integer)
     (:name :no-clear
      :description "画面のクリアをしない"
      :long "no-clear")
@@ -913,10 +967,47 @@
              *bds* (getf options :battle-delay)))
      (if (getf options :moge-delay)
          (setf *boss-delay-seconds* (getf options :moge-delay))
-       (setf *boss-delay-seconds* *battle-delay-seconds*))
+	 (setf *boss-delay-seconds* *battle-delay-seconds*))
+     (when (getf options :all-delay)
+       (setf *map-delay-seconds* (getf options :all-delay)
+	     *battle-delay-seconds* (getf options :all-delay)
+	     *bds* (getf options :all-delay)
+	     *boss-delay-seconds* (getf options :all-delay)))
      (if (getf options :random-seed)
          (set-random-seed (getf options :random-seed))
-       (setf *random-state* (make-random-state t))) ; 環境から乱数を取得。
+	 (setf *random-state* (make-random-state t))) ; 環境から乱数を取得。
+     (when (getf options :hp)
+       (setf *hp* (getf options :hp)))
+     (when (getf options :str)
+       (setf *str* (getf options :str)))
+     (when (getf options :agi)
+       (setf *agi* (getf options :agi)))
+     (when (getf options :heal)
+       (setf *heal* (getf options :heal)))
+     (when (getf options :hammer)
+       (setf *hammer* (getf options :hammer)))
+     (when (getf options :level)
+       (setf *level* (getf options :level)))
+     (when (getf options :floor)
+       (setf *map* (getf options :floor))
+       (incf *monster-level* (floor *map* 7))
+       (dotimes (i (floor *map* 5))
+	 (setf *copy-buki* (omomin-zurashi *copy-buki*))))
+     (when (getf options :buki)
+       (let ((b1 (assoc (getf options :buki) *buki-d* :test #'equal))
+	     (b2 (assoc (getf options :buki) *event-buki* :test #'equal)))
+	 (cond
+	   (b1
+	    (incf *hp* (third b1))
+	    (incf *str* (second b1))
+	    (incf *agi* (fourth b1))
+	    (setf *buki* b1))
+	   (b2
+	    (incf *hp* (third b2))
+	    (incf *str* (second b2))
+	    (incf *agi* (fourth b2))
+	    (setf *buki* b2))
+	   (t (setf *buki* '("なし" 0 0 0))))))
      (when (getf options :no-clear)
        (setf *gamen-clear?* nil))
      (when (getf options :ai)
