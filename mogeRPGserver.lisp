@@ -152,7 +152,9 @@
 ;;ゲームオーバーメッセージ
 (defun game-over-message (p)
   (format t "Game Over.~%")
-  (format t "あなたは地下~d階で力尽きた。~%" (player-map p)))
+  (if *ha2ne2*
+      (format t "あなたはハツネツエリアを倒したが地下~d階で力尽きた。~%" (player-map p))
+      (format t "あなたは地下~d階で力尽きた。~%" (player-map p))))
 
 ;;勝利メッセージ
 (defun victory-message ()
@@ -265,7 +267,7 @@
 ;;ステータスとバトルコマンド表示
 (defun status-and-command (p)
   (format t "------------------------------------------------------------~%")
-  (format t ":ステータス~%")
+  (format t ":ステータス 地下~d階~%" (player-map p))
   (loop for i from 0 to 5
 	do
 	   (case i
@@ -739,27 +741,29 @@
 
 ;;マップ表示+マップの情報リスト作成
 (defun show-map (map p)
-    (gamen-clear)
-    (format t "地下~d階  " (player-map p))
-    (show-player p)
-    (format t "~%")
-    (loop for i from 0 below (donjon-tate map) do
-      (loop for j from 0 below (donjon-yoko map) do
-        (let ((x (aref (donjon-map map) i j))
-	      (name (first (player-buki p)))
-	      (str  (second (player-buki p)))
-	      (hp  (third (player-buki p)))
-	      (agi (fourth (player-buki p))))
-	  (format t "~a" (map-type x))
-	  (if (= j (- (donjon-yoko map) 1))
-	      (case i
-		(0 (format t " 武器[i]   ~a~%" name))
-		(1 (format t "           HP:~d STR:~d AGI:~d~%" hp str agi))
-		(3 (format t " 回復薬    ~d個~%" (player-heal p)))
-		(4 (format t " ハンマー  ~d個~%" (player-hammer p)))
-		(5 (format t " Exp       ~d/~d~%" (player-exp p) *lv-exp*))
-		(otherwise (fresh-line)))))))
-    (show-msg p))
+  (gamen-clear)
+  (format t "地下~d階  " (player-map p))
+  (if *ha2ne2*
+      (format t " (ハ) "))
+  (show-player p)
+  (format t "~%")
+  (loop for i from 0 below (donjon-tate map) do
+    (loop for j from 0 below (donjon-yoko map) do
+      (let ((x (aref (donjon-map map) i j))
+	    (name (first (player-buki p)))
+	    (str  (second (player-buki p)))
+	    (hp  (third (player-buki p)))
+	    (agi (fourth (player-buki p))))
+	(format t "~a" (map-type x))
+	(if (= j (- (donjon-yoko map) 1))
+	    (case i
+	      (0 (format t " 武器[i]   ~a~%" name))
+	      (1 (format t "           HP:~d STR:~d AGI:~d~%" hp str agi))
+	      (3 (format t " 回復薬    ~d個~%" (player-heal p)))
+	      (4 (format t " ハンマー  ~d個~%" (player-hammer p)))
+	      (5 (format t " Exp       ~d/~d~%" (player-exp p) *lv-exp*))
+	      (otherwise (fresh-line)))))))
+  (show-msg p))
 
 (defun map-data-list (map)
   (let ((blocks nil)
